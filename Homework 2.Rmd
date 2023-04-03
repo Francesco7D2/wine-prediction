@@ -1,0 +1,533 @@
+---
+title: "Homework 2"
+author: "Francesco Tedesco"
+date: "2023-03-20"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+## Francesco Tedesco 1635101
+
+## Oliver Einard Tarragó Boardman 1527541
+
+First of all, we import the libraries that we will need.
+
+```{r}
+library(MASS)
+library(leaps)
+```
+
+Next, import the dataset which we are going to study
+
+```{r}
+winequality = read.csv("winequality-red.csv")
+head(winequality)
+```
+
+Now, we define one function to vizualize data
+
+```{r}
+basic_info_of_variable <- function(variable) {
+  
+  # This function returns two plots
+  # Plot 1, histogram with: 
+  # - density (green line)
+  # - mean (red line) 
+  # - median (black line)  
+  
+  # Plot 2, boxplot with: 
+  # - mean (red line) 
+  # - median (black line)  
+  
+  
+  par(mfrow = c(1, 2), cex.axis= 0.75, cex.lab= 0.75) 
+  
+  hist(variable, xlab = "", main = "", breaks = 20, probability = TRUE)
+  lines(density(variable), col = 'green', lwd = 3)
+  grid(nx = NULL, ny = NULL, col = "gray", lty = "dotted")
+  abline(v = mean(variable), col='red', lwd = 2.2)
+  abline(v = median(variable), col='black', lwd = 2.2)
+
+  boxplot(variable)
+  grid(nx = NULL, ny = NULL, col = "gray", lty = "dotted")
+  segments(x0 = 0.8, y0 = mean(variable),
+           x1 = 1.2, y1 = mean(variable),
+           col = "red", lwd = 2)
+}
+```
+
+\pagebreak
+
+## Exercise 1
+
+**Provide details of the chosen dataset. Design models to be analysed for this dataset.**
+
+We choose the winequality-red dataset from kaggle, which contains information about several red wines, for each of them we have some measurements which describe the characteristics of the wine, our goal is to predict the wine quality from the given data. So, each characteristic will be a variable, we don't know yet if all variables are needed to make our regression model. The variables are:
+
+-   **fixed.acidity:** Indicates the amount of non-volatile acids presents in the wine, these acids doesn't evaporate easily when the wine is heated. Some examples are: tartaric, malic and citric acid...
+
+    ```{r}
+    basic_info_of_variable(winequality$fixed.acidity)
+    ```
+
+    As we can see by the plots, in a considerable number fo wines we have around 8 % of fixed acidity, we can also say that find a wind with a fixed acidity higher that 12.1 approximately.
+
+-   **volatile.acidity:** The variable refers to the amounts of volatile acids, which unlike the previous acids, these can evaporate easily, one example can be acetic acid. When the amount is too high, the taste of the wine can be unpleasant.
+
+    ```{r}
+    basic_info_of_variable(winequality$volatile.acidity)
+    ```
+
+    Since higher amounts of volatile acidity are unpleasant, we can see that the majority of wine have volatility acidity around 0.5, which compared to the previous acidity is lower. We can also say that the distribution in this case is more symmetric since the median are and the mean are closer and the shape is also symmetric
+
+-   **citric.acid:** The quantity of citric acid in the wine, this acid can be found in some natural fruits, in small portions can help to add 'freshness' and flavor to wines
+
+    ```{r}
+    basic_info_of_variable(winequality$citric.acid)
+    ```
+
+    The citric acid of the wines is a little more dispersed, since more wines have a similar amount of citric acid and the middle quartile of the box plot is wider
+
+-   **residual.sugar:** The amount of sugar that the wine has after the fermentation process.
+
+    ```{r}
+    basic_info_of_variable(winequality$residual.sugar)
+    ```
+
+    Unlike the previous variable, we can see less dispersion since the values of residual sugar are more concentrated at approximately 2.5.
+
+-   **chlorides:** Indicates the quantity of salt of the wine
+
+    ```{r}
+    basic_info_of_variable(winequality$chlorides)
+    ```
+
+    Like the previous variable, we the amount of chlorides of wines isn't so dispersed
+
+-   **free.sulfur.dioxide:** It refers to the amount of free sulfur dioxide (SO2) of the wine, this type of sulfur dioxide exists in equilibrium between dissolved gas and in its free form (bisulfite ion).In small quantities can help to prevent microbial growth and the oxidation of the wine. (parts per million ppm)
+
+    ```{r}
+    basic_info_of_variable(winequality$free.sulfur.dioxide)
+    ```
+
+    Here the median is lower than the mean, so in majority of wines the free.sulfur.dioxide portion is below the mean, so there are a minority of higher values for free.sulfur.dioxide that increase the mean.
+
+-   **total.sulfur.dioxide:** In this case, we have the total amount of sulfur dioxide which can be found in the wine. It is measured in parts per million (ppm), in small quantities is almost undetectable, can become easy to detect when the concentration is over 50 ppm.
+
+    ```{r}
+    basic_info_of_variable(winequality$total.sulfur.dioxide)
+    ```
+
+    Thanks to the median, we can say that in majority of wines we can notice the presence of the total sulfur dioxide in the wine, since the median is lower than 50.
+
+-   **density:** Indicates the ratio between linquid mass and its volume. In this case, mostly depends on the percent alcohol and sugar presents in the wine.
+
+    ```{r}
+    basic_info_of_variable(winequality$density)
+    ```
+
+    Here, the distribution is very symmetric since the median and mean are almost the same and the shape of the distribution is symmetrical respect to the mean and median line.
+
+-   **pH:** This variables indicates the acidity (alkalinity) of the wine. Can take values from 0 to 14, and wines often have a 3-4 pH value.
+
+    ```{r}
+    basic_info_of_variable(winequality$pH)
+    ```
+
+    In this case, the distribution is also symmetrical, for the same reasons we mentioned in the previous variable.
+
+-   **sulphates:** It refers to the amount of sulfites present in the wine, this additive can contribute to sulfure dioxode levels, which helps to prevent oxidation and microbial growth.
+
+    ```{r}
+    basic_info_of_variable(winequality$sulphates)
+    ```
+
+    We can see, that we probably have some outliers due to the presence of values above the upper quartile.
+
+-   **alcohol:** The alcohol percentage of the wine
+
+    ```{r}
+    basic_info_of_variable(winequality$alcohol)
+    ```
+
+    We can see, that all wines have a alcohol and the mean percentage is approximately around 10.4 %.
+
+-   **quality:** This is the variable that we want to estimate, consist of a score that can be between 0 and 10, we consider good quality if it's higher than 6.5.
+
+    ```{r}
+    basic_info_of_variable(winequality$quality)
+    ```
+
+Since the median is below 6.5, we can say that the majority of wines have a quality which wouldn't be considered "good".
+
+For more details, you can check the following links:
+
+<https://www.kaggle.com/datasets/uciml/red-wine-quality-cortez-et-al-2009>
+
+<https://archive.ics.uci.edu/ml/datasets/wine+quality>
+
+## Exercise 2
+
+**Apply backward selection to find the best fit model using p-value and AIC criteria. Compare the results found by both methods. Do the same for forward selection. Comment on the results.**
+
+**backward selection (p-value)**
+
+The backward selection algorithm for p-value follow this steps:
+
+1.  Fit the model with all the variables
+2.  Update the model by removing the variable with higher p-value
+3.  Fit the updated model
+4.  Repeat steps 2 and 3 until the highest p-value of the updated model is below 0.05.
+
+The following code applies the backward selection method for p-value
+
+```{r}
+model_full <- lm(quality~.,data = winequality)
+summary(model_full)
+model <- update(model_full, .~.-residual.sugar)
+summary(model)
+model <- update(model, .~.-density)
+summary(model)
+model <- update(model, .~.-fixed.acidity)
+summary(model)
+model <- update(model, .~.-citric.acid)
+summary(model)
+```
+
+**backward selection (AIC)**
+
+Now, we apply the same selection method, but with AIC measure:
+
+$$AIC = 2k \space - \space 2Log Likelihood $$
+
+Since the k is the number of variables and the log-likelihood measures how well the model fit the data, we can say that we want a lower AIC value, which implies a simpler model with better fit having in count its complexity.
+
+In order to do the backward selection method with AIC, we will follow these steps:
+
+1.  Fit the model with all the variables
+
+2.  Calculate the AIC for the initial fit
+
+3.  For each variable, we get the AIC value for the fitted model without the variable
+
+4.  Since we want the AIC of the model lower, we remove the variable which produces the lowest increase at the model
+
+5.  Fit the updated model
+
+6.  Repeat steps 3, 4 and 5 until the variable which produces the lowest increase at the model reduces the AIC of the last updated model
+
+Here are the steps of the backward selection method based on AIC using the r function stepAIC
+
+```{r}
+model_full <- lm(quality~.,data = winequality)
+model_backward <- stepAIC(model_full, trace = TRUE, direction = "backward")
+summary(model_backward)
+```
+
+In this case, the sets of variable selected by the previous methods are the same, so we can say that the selected variables have a significant effect on the response variable. Then, the model fitted with this set of variables can be considered a model simple enough to prevent over-fitting and predict the quality of wines with a high accuracy.
+
+**forward selection (p-value)**
+
+The forward selection method using p-value, follows these steps:
+
+1.  We fit a model with only one variable for all the predictor variables
+2.  We select the model with the variable added which has the lowest p-value
+3.  With the variable selected, we fit multiple models adding only one variable for model, for all the remaining predictor variables
+4.  Repeat 2 and 3 until the sum of p-values of all values is lower than 0.05
+
+The following code shows the steps for this method:
+
+```{r}
+# To check the results, you can find them in the r markdown that whe sent via CV
+model_forward_p_value <- lm(quality~fixed.acidity, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~volatile.acidity, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~citric.acid, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~residual.sugar, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~free.sulfur.dioxide, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~total.sulfur.dioxide, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~density, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~pH, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~alcohol, data = winequality)
+summary(model_forward_p_value)
+
+
+
+model_forward_p_value <- lm(quality~fixed.acidity + volatile.acidity, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~citric.acid  + volatile.acidity, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~residual.sugar  + volatile.acidity, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~free.sulfur.dioxide  + volatile.acidity, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~total.sulfur.dioxide  + volatile.acidity, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~density  + volatile.acidity, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~pH  + volatile.acidity, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~alcohol  + volatile.acidity, data = winequality)
+summary(model_forward_p_value)
+
+
+model_forward_p_value <- lm(quality~fixed.acidity + volatile.acidity  + alcohol, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~citric.acid  + volatile.acidity  + alcohol, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~residual.sugar + volatile.acidity + alcohol, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~free.sulfur.dioxide  + volatile.acidity  + alcohol,
+                            data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~total.sulfur.dioxide  + volatile.acidity  + alcohol, 
+                            data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~density  + volatile.acidity + alcohol, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~pH  + volatile.acidity + alcohol, data = winequality)
+summary(model_forward_p_value)
+
+
+
+
+model_forward_p_value <- lm(quality~fixed.acidity + volatile.acidity  + alcohol 
+                            + total.sulfur.dioxide, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~citric.acid  + volatile.acidity  + alcohol 
+                            + total.sulfur.dioxide, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~residual.sugar  + volatile.acidity  + alcohol
+                            + total.sulfur.dioxide, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~free.sulfur.dioxide  + volatile.acidity  
+                            + alcohol + total.sulfur.dioxide, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~density  + volatile.acidity + alcohol 
+                            + total.sulfur.dioxide, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~pH  + volatile.acidity + alcohol + total.sulfur.dioxide
+                            , data = winequality)
+summary(model_forward_p_value)
+
+
+
+model_forward_p_value <- lm(quality~fixed.acidity + volatile.acidity  + alcohol 
+                            + total.sulfur.dioxide + pH, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~citric.acid  + volatile.acidity  + alcohol 
+                            + total.sulfur.dioxide+ pH, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~residual.sugar  + volatile.acidity  + alcohol 
+                            + total.sulfur.dioxide + pH, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~free.sulfur.dioxide  + volatile.acidity  + alcohol 
+                            + total.sulfur.dioxide + pH, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~density  + volatile.acidity + alcohol
+                            + total.sulfur.dioxide + pH, data = winequality)
+summary(model_forward_p_value)
+
+
+
+model_forward_p_value <- lm(quality~fixed.acidity + volatile.acidity  + alcohol
+                            + total.sulfur.dioxide + pH  + free.sulfur.dioxide, 
+                            data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~citric.acid  + volatile.acidity  + alcohol 
+                            + total.sulfur.dioxide+ pH  + free.sulfur.dioxide,
+                            data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~residual.sugar  + volatile.acidity  + alcohol 
+                            + total.sulfur.dioxide + pH  + free.sulfur.dioxide,
+                            data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~density  + volatile.acidity + alcohol
+                            + total.sulfur.dioxide + pH + free.sulfur.dioxide, 
+                            data = winequality)
+summary(model_forward_p_value)
+
+
+
+model_forward_p_value <- lm(quality~fixed.acidity + volatile.acidity  + alcohol 
+                            + total.sulfur.dioxide + pH  + free.sulfur.dioxide  
+                            + citric.acid, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~residual.sugar  + volatile.acidity  + alcohol 
+                            + total.sulfur.dioxide + pH  + free.sulfur.dioxide 
+                            + citric.acid, data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~density  + volatile.acidity + alcohol 
+                            + total.sulfur.dioxide + pH + free.sulfur.dioxide  
+                            + citric.acid, data = winequality)
+summary(model_forward_p_value)
+
+# here p-value > 0.05
+model_forward_p_value <- lm(quality~residual.sugar  + volatile.acidity 
+                            + alcohol + total.sulfur.dioxide + pH  
+                            + free.sulfur.dioxide + citric.acid 
+                            + fixed.acidity , data = winequality)
+summary(model_forward_p_value)
+
+model_forward_p_value <- lm(quality~density  
+                            + volatile.acidity + alcohol + total.sulfur.dioxide
+                            + pH + free.sulfur.dioxide  + citric.acid 
+                            + fixed.acidity , data = winequality)
+summary(model_forward_p_value)
+
+# so, the model: 
+model_forward_p_value <- lm(quality~fixed.acidity + volatile.acidity  + alcohol
+                            + total.sulfur.dioxide + pH  + free.sulfur.dioxide 
+                            + citric.acid, data = winequality)
+summary(model_forward_p_value)
+
+```
+
+```{r}
+summary(model_forward_p_value)
+```
+
+**forward selection (AIC)**
+
+Having in mind the interpretation of AIC and the steps of backward selection for p-value, here we will add to the model the variable that decrease the most the AIC of the model, we stop when we can't get a lower AIC
+
+The following code gets a set of variables following the forward selection method for AIC criteria
+
+```{r}
+model_null <- lm(quality~1,data = winequality)
+model_forward <- stepAIC(model_null, trace = TRUE, direction = "forward",
+                         scope=list(lower=model_null, upper=~residual.sugar 
+                                    + volatile.acidity  + alcohol + total.sulfur.dioxide 
+                                    + pH  + free.sulfur.dioxide + citric.acid
+                                    + fixed.acidity + density + sulphates + chlorides))
+summary(model_forward)
+# https://stackoverflow.com/questions/33715860/problems-with-forward-selection-with-stepaic-r
+```
+
+In this case, the set of variables selected by the forward selection using AIC is the same set obtained with backward selection, this fact can also explain that all these variables have a significant effect on the response variable. Since the model obtained with forward selection using p-value have higher p-values with a different set of sizes, knowing the alternative we should prioritize it.
+
+## Exercise 3
+
+**Find the best possible subset of variables to select the best fit model. Compare the results with the final models obtained in the previous point.**
+
+To obtain the bests subsets of variables of all possible subsets of variables, we can use the following code:
+
+```{r}
+model_subsets_best <- lm(quality~., data = winequality)
+ols_step_best_subset(model_subsets_best)
+```
+
+Since there are many possible best subsets for different criteria, in order to select a good model, we can get the bests models based on a reduced number of criteria, like the $R^2_{Adj}$ or BIC (Bayesian information criterion), the next code helps us to do that.
+
+```{r}
+model_subsets <- regsubsets(quality~residual.sugar  + volatile.acidity  + alcohol 
+                            + total.sulfur.dioxide + pH  + free.sulfur.dioxide 
+                            + citric.acid + fixed.acidity + density + sulphates 
+                            + chlorides, data = winequality, nbest = 2)
+summary(model_subsets)$which
+
+```
+
+In order to understand easier the results, we can plot them:
+
+```{r}
+par(mfrow = c(1,2))
+plot(model_subsets, scale = "adjr", main=expression(R[Adj]^2))
+plot(model_subsets, scale = "bic", main = "BIC")
+
+```
+
+In these plots, each line represents a model with a different set of variables, if we want the bests subsets, we need to select the first row:
+
+In order to do that, first of all we need to select get indices where these two measures get the maximum or minimum value
+
+```{r}
+# for r2 adjusted we need to get the index of the maximum value
+which(summary(model_subsets)$adjr2 ==max(summary(model_subsets)$adjr2))
+```
+
+```{r}
+# for BIC criteria we want the minimum
+which(summary(model_subsets)$bic ==min(summary(model_subsets)$bic))
+```
+
+Once we have the indices, we can finally get the models
+
+-   Best model for $R²_{Adj}$
+
+```{r}
+summary(model_subsets)$which[15,]
+```
+
+```{r}
+model_adjr2 <- lm(quality~volatile.acidity  + alcohol + total.sulfur.dioxide + pH  
+                  + free.sulfur.dioxide + citric.acid + sulphates + chlorides, 
+                  data = winequality)
+summary(model_adjr2)
+```
+
+The model we just obtained, has the same Adjusted R², but one variable more (**citric acid**), since this variable is more dispersed similar with less variance, and to prevent over-fitting and make the model less complex we should not consider this model in comparison to the model we found before
+
+-   Best model for BIC
+
+```{r}
+summary(model_subsets)$which[11, ]
+```
+
+```{r}
+model_BIC <- lm(quality~volatile.acidity  + alcohol + total.sulfur.dioxide + pH + sulphates + chlorides, data = winequality)
+summary(model_BIC)
+```
+
+Now, the model hasn't the **fixed sulfur dioxide** variable, and in general has even lower p-values, since the **fixed sulfur dioxide** variable in the other model has the higher p-value, we can consider remove it, but, even that, removing this variable can help to reduce the complexity of the model and prevent over fitting, as we saw in exercise 2, with different selection method with different criteria we get the same set of variables, which probably indicates that all the variables of this set are significant to the prediction. So, at the moment, we can't arrive on a conclusion on which model select, a good idea might be test the two model with a validation data-set.
+
+## References
+
+<https://r-coder.com/boxplot-r/?utm_content=cmp-true>
+
+<https://www.geeksforgeeks.org/how-to-use-par-function-in-r/>
+
+<https://www.datacamp.com/tutorial/make-histogram-basic-r>
